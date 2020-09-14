@@ -1,0 +1,74 @@
+version: "3.8"
+
+services:
+  api:
+    image: elijah668/items-app-api:latest
+    volumes:
+      - data:/.data.db
+    environment:
+      - JWT_SECRET_KEY
+    secrets:
+     - jwt_secret_key
+    ports:
+      - "5000:5000"
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 2
+        delay: 10s
+        order: stop-first
+  web:
+    stdin_open: true
+    tty: true
+    image: elijah668/items-app-adapter:latest
+    volumes:
+      - index:/build:ro
+    depends_on:
+      - api
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 2
+        delay: 10s
+        order: stop-first
+
+  nginx:
+    image: elijah668/items-app-nginx:1.0.0
+    volumes:
+      - index:/usr/share/nginx/html
+    ports:
+      - "8080:80"
+    depends_on:
+      - web
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 2
+        delay: 10s
+        order: stop-first
+
+volumes:
+  index:
+    name: github_index
+  data:
+    name: github_data
+    external: true
+
+secrets:
+  jwt_secret_key:
+    external: true
